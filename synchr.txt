@@ -1,0 +1,657 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Фитнес-Трекер с Синхронизацией</title>
+<!-- Иконки Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  :root {
+    --bg: #0f1115; --card: #1a1e2c; --text: #e9eef5; --muted: #a9b2c0;
+    --accent: #4FC3F7; --ok: #00C853; --warn: #FFB300; --danger: #FF5252;
+    --purple: #bb86fc; --bg-light: #f0f2f5; --card-light: #ffffff;
+    --text-light: #2a2a2a; --muted-light: #6c757d;
+  }
+  [data-theme="light"] {
+    --bg: var(--bg-light); --card: var(--card-light); --text: var(--text-light);
+    --muted: var(--muted-light);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.6;
+    transition: background-color 0.3s, color 0.3s;
+  }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 20px; }
+  .header {
+    display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 15px; margin-bottom: 20px; padding-bottom: 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  [data-theme="light"] .header { border-bottom-color: #dee2e6; }
+  h1 {
+    font-size: 28px; margin: 0;
+    background: linear-gradient(45deg, var(--accent), var(--purple));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    font-weight: 700;
+  }
+  .controls-container {
+    background: var(--card); padding: 16px; border-radius: 16px;
+    margin-bottom: 20px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  }
+  .timer-presets, .main-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .timer-presets { margin-bottom: 15px; }
+  .btn {
+    background: linear-gradient(145deg, #2a2f44, #22283a); color: var(--text);
+    border: none; border-radius: 12px; padding: 10px 15px; cursor: pointer;
+    font-weight: 600; display: flex; align-items: center; gap: 8px;
+    transition: all 0.2s ease; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  }
+  [data-theme="light"] .btn { background: #e9ecef; color: var(--text-light); }
+  .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2); }
+  .timer {
+    font-size: 32px; font-weight: 700; min-width: 110px; text-align: center;
+    font-family: 'Monospace', monospace; background: rgba(0, 0, 0, 0.2);
+    padding: 8px; border-radius: 12px;
+  }
+  [data-theme="light"] .timer { background: #f8f9fa; }
+  .bar {
+    height: 10px; background: #2a2f44; border-radius: 10px;
+    overflow: hidden; flex: 1; min-width: 120px;
+  }
+  [data-theme="light"] .bar { background: #e9ecef; }
+  .bar > div {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--ok), var(--warn), var(--danger));
+    transition: width 0.3s ease;
+  }
+  .table-container {
+    background: var(--card); border-radius: 16px; overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2); margin-bottom: 20px; overflow-x: auto;
+  }
+  .table { width: 100%; border-collapse: collapse; }
+  .table th, .table td { padding: 16px 12px; text-align: center; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+  [data-theme="light"] .table th, [data-theme="light"] .table td { border-bottom-color: #dee2e6; }
+  .table th {
+    font-weight: 600; color: var(--muted); background: rgba(0, 0, 0, 0.2);
+    font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  [data-theme="light"] .table th { background: #f8f9fa; }
+  .table tr:last-child td { border-bottom: none; }
+  a.link { color: var(--accent); text-decoration: none; font-weight: 600; }
+  a.link:hover { text-decoration: underline; }
+  input.weight {
+    width: 90px; padding: 10px 12px; border-radius: 10px;
+    border: 2px solid rgba(255, 255, 255, 0.1); background: rgba(0, 0, 0, 0.2);
+    color: var(--text); text-align: center; font-weight: 600; transition: border-color 0.3s;
+  }
+  [data-theme="light"] input.weight { border-color: #ced4da; background: #fff; }
+  input.weight:focus { border-color: var(--accent); outline: none; }
+  .info { cursor: pointer; color: var(--warn); margin-left: 6px; user-select: none; }
+  .tooltip {
+    position: fixed; display: none; background: #1b2033; color: #fff; padding: 12px;
+    border: 1px solid #2c3350; border-radius: 8px; font-size: 14px; max-width: 300px;
+    z-index: 1100; box-shadow: 0 6px 20px rgba(0,0,0,.35);
+  }
+  .row-title { display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; }
+  .muted { color: var(--muted); font-size: 14px; }
+  .foot { margin: 20px 0 10px; color: var(--muted); font-size: 14px; text-align: center; }
+  .switch { display: inline-flex; align-items: center; gap: 8px; }
+  .session-progress {
+    margin: 20px 0; background: #2a2f44; height: 8px; border-radius: 10px;
+    overflow: hidden; position: relative;
+  }
+  [data-theme="light"] .session-progress { background: #e9ecef; }
+  .session-progress-inner {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--ok), var(--accent));
+    transition: width 0.5s ease;
+  }
+  .progress-label {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    font-size: 12px; color: var(--muted); font-weight: 600;
+  }
+  .exercise-done { transform: scale(1.4); cursor: pointer; accent-color: var(--ok); }
+  .completed .exercise-name a { text-decoration: line-through; opacity: 0.7; }
+  .save-btn { background: linear-gradient(145deg, var(--ok), #00b34d); }
+  .program-selector {
+    background: var(--card); padding: 16px; border-radius: 16px;
+    margin-bottom: 20px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  }
+  .program-buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+  .program-btn { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.1); }
+  [data-theme="light"] .program-btn { background: #e9ecef; border-color: #dee2e6; }
+  .program-btn.active { background: linear-gradient(145deg, var(--accent), #3ba9e0); border-color: var(--accent); }
+  [data-theme="light"] .program-btn.active { color: #fff; }
+  .notes-section {
+    background: var(--card); padding: 20px; border-radius: 16px;
+    margin-top: 20px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  }
+  .notes-section h3 { margin-top: 0; margin-bottom: 15px; color: var(--accent); font-size: 18px; }
+  #workoutNotes {
+    width: 100%; min-height: 120px; background: rgba(0, 0, 0, 0.2);
+    color: var(--text); border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 12px;
+    padding: 12px; font-family: inherit; resize: vertical; transition: border-color 0.3s;
+  }
+  [data-theme="light"] #workoutNotes { background: #fff; border-color: #ced4da; }
+  #workoutNotes:focus { border-color: var(--accent); outline: none; }
+  .modal {
+    display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%;
+    background-color: rgba(0, 0, 0, 0.7); backdrop-filter: blur(5px);
+    align-items: center; justify-content: center;
+  }
+  .modal-content {
+    background: var(--card); margin: 20px; padding: 24px; border-radius: 20px;
+    width: 90%; max-width: 600px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    position: relative; animation: modalFadeIn 0.3s ease; max-height: 90vh; overflow-y: auto;
+  }
+  @keyframes modalFadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+  .close {
+    color: var(--muted); position: absolute; top: 15px; right: 20px;
+    font-size: 28px; font-weight: bold; cursor: pointer; transition: color 0.3s;
+  }
+  .close:hover { color: var(--text); }
+  .sync-status {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 15px;
+    padding: 12px; border-radius: 12px; background: rgba(0, 0, 0, 0.2);
+  }
+  [data-theme="light"] .sync-status { background: #f8f9fa; }
+  .status-indicator {
+    width: 12px; height: 12px; border-radius: 50%; transition: all 0.3s;
+  }
+  .status-indicator.disconnected { background: var(--muted); }
+  .status-indicator.connected { background: var(--ok); box-shadow: 0 0 10px var(--ok); }
+  .status-indicator.error { background: var(--danger); box-shadow: 0 0 10px var(--danger); }
+  .sync-devices { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px; }
+  .device-card { background: rgba(0, 0, 0, 0.2); padding: 15px; border-radius: 12px; text-align: center; }
+  [data-theme="light"] .device-card { background: #f8f9fa; }
+  .device-card h4 { margin: 0 0 10px 0; color: var(--accent); }
+  .qr-code canvas { width: 100% !important; height: auto !important; max-width: 150px; margin: 0 auto; padding: 10px; background: white; border-radius: 8px; }
+  @media (max-width: 768px) {
+    .sync-devices { grid-template-columns: 1fr; }
+    .main-actions { justify-content: center; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="header">
+    <h1 id="workoutTitle">Фитнес-Трекер</h1>
+    <div class="switch">
+      <input type="checkbox" id="themeToggle">
+      <label for="themeToggle">Светлая тема</label>
+    </div>
+  </div>
+
+  <div class="program-selector">
+    <h3><i class="fas fa-dumbbell"></i> Выбор программы</h3>
+    <div class="program-buttons">
+      <button class="btn program-btn active" data-program="friday_legs"><i class="fas fa-running"></i> Пятница: Ноги</button>
+      <button class="btn program-btn" data-program="push_day"><i class="fas fa-fire"></i> PUSH: Грудь+Трицепс</button>
+    </div>
+  </div>
+
+  <div class="session-progress">
+    <div class="session-progress-inner" id="sessionProgress"></div>
+    <span class="progress-label" id="progressLabel">0/0</span>
+  </div>
+
+  <div class="controls-container">
+    <div class="timer-presets">
+      <button class="btn" onclick="startTimer(45)">45с</button>
+      <button class="btn" onclick="startTimer(60)">60с</button>
+      <button class="btn" onclick="startTimer(90)">90с</button>
+      <button class="btn" onclick="startTimer(120)">120с</button>
+      <button class="btn" onclick="startTimer(180)">180с</button>
+    </div>
+    <div class="main-actions">
+      <span class="timer" id="timer">00:00</span>
+      <div class="bar"><div id="barFill"></div></div>
+      <div class="switch">
+        <input type="checkbox" id="wakeLockToggle">
+        <label for="wakeLockToggle">Не гасить</label>
+      </div>
+      <button class="btn" onclick="resetTimer()" title="Сброс таймера"><i class="fas fa-redo"></i></button>
+      <button class="btn" onclick="showSyncModal()" title="Синхронизация"><i class="fas fa-sync-alt"></i></button>
+      <button class="btn" onclick="showAnalytics()" title="Аналитика"><i class="fas fa-chart-line"></i></button>
+      <button class="btn" onclick="exportData()" title="Экспорт данных"><i class="fas fa-upload"></i></button>
+      <button class="btn" onclick="importData()" title="Импорт данных"><i class="fas fa-download"></i></button>
+    </div>
+  </div>
+
+  <div class="table-container">
+    <table class="table" id="workout">
+      <thead>
+        <tr>
+          <th>Упражнение</th>
+          <th>Подх. × Повт.</th>
+          <th>Текущий вес</th>
+          <th>Целевой вес</th>
+          <th>Выполнено</th>
+          <th>Комментарий</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="notes-section">
+    <h3><i class="fas fa-sticky-note"></i> Заметки о тренировке</h3>
+    <textarea id="workoutNotes" placeholder="Запишите здесь свои мысли, ощущения, наблюдения..."></textarea>
+  </div>
+
+  <div class="foot">
+    <p>Подсказка: нажимай на название — откроется поиск YouTube Shorts по упражнению.</p>
+    <div class="sync-status">
+      <div class="status-indicator disconnected" id="statusIndicator"></div>
+      <span id="statusText">Синхронизация: не подключено</span>
+    </div>
+  </div>
+</div>
+
+<!-- Модальные окна -->
+<div id="syncModal" class="modal">
+  <div class="modal-content">
+    <span class="close">&times;</span>
+    <h2><i class="fas fa-sync-alt"></i> Синхронизация устройств</h2>
+    <div class="sync-devices">
+      <div class="device-card">
+        <h4><i class="fas fa-mobile-alt"></i> Это устройство</h4>
+        <div class="qr-code" id="localQr"></div>
+        <p>Ваш ID: <b id="localDeviceId">Ожидание...</b></p>
+      </div>
+      <div class="device-card">
+        <h4><i class="fas fa-desktop"></i> Подключиться к</h4>
+        <input type="text" id="remoteDeviceId" placeholder="ID другого устройства" style="width: 100%; padding: 10px; margin: 10px 0; border-radius: 8px;">
+        <button class="btn" id="connectBtn"><i class="fas fa-link"></i> Подключиться</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="analyticsModal" class="modal"><div class="modal-content"><span class="close">&times;</span><h2>Аналитика (в разработке)</h2></div></div>
+<div id="importExportModal" class="modal"><div class="modal-content"><span class="close">&times;</span><h2 id="importExportTitle">Экспорт</h2><textarea id="dataText" style="width: 100%; height: 150px; margin: 10px 0;"></textarea><button class="btn" id="fileActionBtn">Скачать</button></div></div>
+<div id="tip" class="tooltip"></div>
+
+<!-- Библиотеки -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
+<script>
+// --- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ И КОНСТАНТЫ ---
+const $ = (selector) => document.querySelector(selector);
+const $$ = (selector) => document.querySelectorAll(selector);
+
+const TRAINING_PROGRAMS = {
+  friday_legs: {
+    name: "Пятница — Legs + rear delt + core",
+    exercises: [
+      { name: "Присед в тренажёре Смита", reps: "4×12", current: "40 кг", target: "42.5 кг", comment: "Темп 2-0-2", tip: "Спина нейтральна, корпус слегка вперёд, колени идут по линии носков." },
+      { name: "Жим ногами", reps: "4×12", current: "80 кг", target: "85 кг", comment: "Без полного выпрямления", tip: "Поясница прижата, стопы полностью на платформе, колени не блокируй вверху." },
+      { name: "Болгарские сплит-приседы", reps: "3×10", current: "2×8 кг", target: "2×10 кг", comment: "Наклон корпуса вперёд", tip: "Передняя голень почти вертикальна, лёгкий наклон вперёд для акцента на ягодицы." },
+      { name: "Подъём на носки в тренажёре", reps: "4×15", current: "40 кг", target: "45 кг", comment: "Фиксация вверху 1–2 сек", tip: "Полная амплитуда: глубокий стретч внизу, пауза в пике." },
+      { name: "Обратная бабочка (rear delt)", reps: "3×15", current: "15 кг", target: "17.5 кг", comment: "Лопатки не сводить", tip: "Локти мягко согнуты, веди плечом назад-вверх, не своди лопатки." },
+      { name: "Face pull", reps: "3×15", current: "—", target: "—", comment: "Стабилизация корпуса", tip: "Тяни к уровню глаз/лоба, локти высоко, шея длинная." },
+      { name: "Планка на локтях", reps: "3×30 сек", current: "—", target: "—", comment: "—", tip: "Подкрути таз, пресс и ягодицы в тонусе, дыши спокойно." },
+      { name: "Скручивания на римском стуле", reps: "3×15", current: "Без веса", target: "+2.5 кг", comment: "Не рывками", tip: "Сегментарный подъём корпуса, не тяните голову руками." }
+    ]
+  },
+  push_day: {
+    name: "PUSH (Грудь, Трицепс, Плечи)",
+    exercises: [
+      { name: "Жим штанги лежа", reps: "4×8-12", current: "50 кг", target: "60 кг", comment: "Техника важнее веса", tip: "Держи спину напряженной, не отрывай таз от скамьи." },
+      { name: "Жим в тренажере Hammer", reps: "3×10-12", current: "25 кг", target: "35 кг", comment: "Жжение в средних дельтах", tip: "Сфокусируйся на мощном жимовом движении." },
+      { name: "Сведение рук 'Бабочка'", reps: "3×12-15", current: "30 кг", target: "45 кг", comment: "Пауза в точке сведения", tip: "Сфокусируйся на пиковом сокращении." },
+      { name: "Отжимания на брусьях", reps: "3×до отказа", current: "Свой вес", target: "-30 кг", comment: "Используй гравитрон", tip: "Наклоняй корпус вперед для акцента на грудь." },
+      { name: "Подъемы гантелей перед собой", reps: "3×12-15", current: "2×5 кг", target: "2×7 кг", comment: "Без читинга", tip: "Поднимай гантели на уровень плеч." },
+      { name: "Шраги со штангой", reps: "4×15-20", current: "60 кг", target: "70 кг", comment: "Движение строго вверх-вниз", tip: "Пожимай плечами вверх, не сгибая рук." },
+      { name: "Разгибание на верхнем блоке", reps: "3-4×12-15", current: "15 кг", target: "25 кг", comment: "Локти прижаты", tip: "Разворачивай кисти в конце движения для пикового сокращения." },
+      { name: "Планка", reps: "3×макс. время", current: "—", target: "—", comment: "Пресс напряжен", tip: "Держи пресс напряженным, не прогибай поясницу." }
+    ]
+  }
+};
+
+let currentProgram = 'friday_legs';
+let wakeLock = null;
+let peer = null;
+let conn = null;
+let unsavedChanges = false;
+let isUpdatingFromSync = false;
+
+// --- СИСТЕМА СИНХРОНИЗАЦИИ (PeerJS) ---
+function initSync() {
+    peer = new Peer();
+    peer.on('open', id => {
+        $('#localDeviceId').textContent = id;
+        $('#localQr').innerHTML = '';
+        QRCode.toCanvas($('#localQr').appendChild(document.createElement('canvas')), id, { width: 150 });
+    });
+    peer.on('connection', newConn => setupConnection(newConn));
+    peer.on('error', err => {
+        console.error("PeerJS Error:", err);
+        updateSyncStatus('error', `Ошибка: ${err.type}`);
+    });
+}
+
+function connectToDevice() {
+    const remoteId = $('#remoteDeviceId').value.trim();
+    if (!remoteId) return alert('Введите ID устройства');
+    if (conn) conn.close();
+    setupConnection(peer.connect(remoteId));
+}
+
+function setupConnection(newConn) {
+    conn = newConn;
+    conn.on('open', () => {
+        updateSyncStatus('connected', `Подключено к ${conn.peer}`);
+        closeModal('syncModal');
+        syncFullState(); // Отправляем полное состояние при подключении
+    });
+    conn.on('data', handleIncomingData);
+    conn.on('close', () => updateSyncStatus('disconnected', 'Отключено'));
+    conn.on('error', () => updateSyncStatus('error', 'Ошибка соединения'));
+}
+
+function updateSyncStatus(status, text) {
+    const indicator = $('#statusIndicator');
+    indicator.className = `status-indicator ${status}`;
+    $('#statusText').textContent = `Синхронизация: ${text}`;
+}
+
+function handleIncomingData(data) {
+    isUpdatingFromSync = true;
+    try {
+        if (data.type === 'full_state') {
+            Object.keys(data.payload).forEach(key => {
+                localStorage.setItem(key, data.payload[key]);
+            });
+            // Обновляем UI только если программа совпадает или меняется
+            const savedProgram = localStorage.getItem(storageKey('currentProgram')) || 'friday_legs';
+            if (currentProgram !== savedProgram) {
+                selectProgram(savedProgram, false);
+            } else {
+                loadProgramData();
+                renderWorkoutTable();
+            }
+        }
+    } catch (e) {
+        console.error("Error handling incoming data:", e);
+    } finally {
+        isUpdatingFromSync = false;
+    }
+}
+
+function syncFullState() {
+    if (!conn || !conn.open || isUpdatingFromSync) return;
+    
+    const payload = {};
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key.startsWith('fitness-app:')) {
+            payload[key] = localStorage.getItem(key);
+        }
+    }
+    conn.send({ type: 'full_state', payload });
+}
+
+// --- ОСНОВНЫЕ ФУНКЦИИ ПРИЛОЖЕНИЯ ---
+const storageKey = (suffix) => `fitness-app:${suffix}`;
+
+function loadTheme() {
+    const savedTheme = localStorage.getItem(storageKey('theme')) || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    $('#themeToggle').checked = savedTheme === 'light';
+}
+
+function toggleTheme(isLight) {
+    const theme = isLight ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem(storageKey('theme'), theme);
+    syncFullState();
+}
+
+function selectProgram(programKey, saveSelection = true) {
+    if (!TRAINING_PROGRAMS[programKey]) return;
+    
+    saveCurrentProgramData(); // Сохраняем прогресс текущей программы перед переключением
+    currentProgram = programKey;
+
+    $$('.program-btn').forEach(btn => btn.classList.remove('active'));
+    $(`.program-btn[data-program="${programKey}"]`).classList.add('active');
+
+    $('#workoutTitle').textContent = TRAINING_PROGRAMS[programKey].name;
+    
+    loadProgramData();
+    renderWorkoutTable();
+
+    if (saveSelection) {
+        localStorage.setItem(storageKey('currentProgram'), programKey);
+        syncFullState();
+    }
+}
+
+function renderWorkoutTable() {
+    const tbody = $("#workout tbody");
+    tbody.innerHTML = '';
+    const program = TRAINING_PROGRAMS[currentProgram];
+    const savedData = getProgramData();
+
+    program.exercises.forEach((ex, i) => {
+        const savedWeight = savedData.weights[i] || ex.current;
+        const isCompleted = savedData.completed.includes(i);
+        
+        const tr = document.createElement("tr");
+        if (isCompleted) tr.classList.add('completed');
+        tr.innerHTML = `
+          <td class="exercise-name">
+            <div class="row-title">
+              <a class="link" href="https://m.youtube.com/results?search_query=${encodeURIComponent(ex.name + " shorts")}" target="_blank">${ex.name} <i class="fas fa-external-link-alt fa-xs"></i></a>
+              <span class="info" data-tip="${escapeHtml(ex.tip)}"><i class="fas fa-info-circle"></i></span>
+            </div>
+          </td>
+          <td>${ex.reps}</td>
+          <td><input class="weight" type="text" value="${savedWeight}" data-index="${i}" /></td>
+          <td>${ex.target}</td>
+          <td><input type="checkbox" class="exercise-done" data-index="${i}" ${isCompleted ? 'checked' : ''}></td>
+          <td class="muted">${ex.comment}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+    updateSessionProgress();
+}
+
+function updateSessionProgress() {
+    const total = TRAINING_PROGRAMS[currentProgram].exercises.length;
+    const completed = getProgramData().completed.length;
+    $('#sessionProgress').style.width = total > 0 ? `${(completed / total) * 100}%` : '0%';
+    $('#progressLabel').textContent = `${completed}/${total}`;
+}
+
+function getProgramData() {
+    return {
+        weights: JSON.parse(localStorage.getItem(storageKey(`${currentProgram}:weights`)) || '{}'),
+        completed: JSON.parse(localStorage.getItem(storageKey(`${currentProgram}:completed`)) || '[]'),
+        notes: localStorage.getItem(storageKey(`${currentProgram}:notes`)) || ''
+    };
+}
+
+function loadProgramData() {
+    $('#workoutNotes').value = getProgramData().notes;
+}
+
+function saveCurrentProgramData() {
+    const weights = {};
+    const completed = [];
+    $$('#workout .weight').forEach(input => { weights[input.dataset.index] = input.value; });
+    $$('#workout .exercise-done:checked').forEach(cb => { completed.push(parseInt(cb.dataset.index)); });
+    const notes = $('#workoutNotes').value;
+
+    localStorage.setItem(storageKey(`${currentProgram}:weights`), JSON.stringify(weights));
+    localStorage.setItem(storageKey(`${currentProgram}:completed`), JSON.stringify(completed));
+    localStorage.setItem(storageKey(`${currentProgram}:notes`), notes);
+    
+    unsavedChanges = true;
+}
+
+// --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (ТАЙМЕР, WAKELOCK, UI) ---
+let tInt = null, total = 0, remain = 0;
+function startTimer(sec) {
+    clearInterval(tInt);
+    total = remain = sec;
+    updateTimer();
+    tInt = setInterval(() => {
+        remain--;
+        updateTimer();
+        if (remain <= 0) {
+            clearInterval(tInt);
+            signal();
+        }
+    }, 1000);
+}
+function resetTimer() {
+    clearInterval(tInt);
+    total = 0; remain = 0;
+    updateTimer();
+}
+function updateTimer() {
+    const m = String(Math.floor(remain / 60)).padStart(2, "0");
+    const s = String(remain % 60).padStart(2, "0");
+    $('#timer').textContent = `${m}:${s}`;
+    $('#barFill').style.width = total > 0 ? `${((total - remain) / total) * 100}%` : "0%";
+}
+function signal() {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const g = ctx.createGain(); g.gain.value = 0.1; g.connect(ctx.destination);
+        const beep = (f, d, t=0) => {
+            const o = ctx.createOscillator(); o.type = "square"; o.frequency.value = f;
+            o.connect(g); o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + d/1000);
+        };
+        beep(880, 200); beep(990, 400, 0.25);
+    } catch(e) {}
+    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+}
+
+async function toggleWakeLock(on) {
+    if (on) {
+        try {
+            if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen');
+        } catch (e) { $('#wakeLockToggle').checked = false; }
+    } else if (wakeLock) {
+        await wakeLock.release();
+        wakeLock = null;
+    }
+}
+document.addEventListener('visibilitychange', async () => {
+  if (wakeLock !== null && document.visibilityState === 'visible') {
+    toggleWakeLock(true);
+  }
+});
+
+function escapeHtml(s) { return s.replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
+function showTip(e) {
+    const tipEl = $('#tip');
+    tipEl.innerHTML = e.target.closest('.info').dataset.tip;
+    tipEl.style.display = "block";
+    const pad = 10;
+    tipEl.style.left = Math.min(e.clientX + pad, window.innerWidth - tipEl.offsetWidth - pad) + "px";
+    tipEl.style.top = Math.min(e.clientY + pad, window.innerHeight - tipEl.offsetHeight - pad) + "px";
+}
+function hideTip() { $('#tip').style.display = "none"; }
+
+function openModal(id) { $(`#${id}`).style.display = 'flex'; }
+function closeModal(id) { $(`#${id}`).style.display = 'none'; }
+function showAnalytics() { openModal('analyticsModal'); }
+function showSyncModal() { openModal('syncModal'); }
+
+function exportData() {
+    const data = {};
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key.startsWith('fitness-app:')) data[key] = localStorage.getItem(key);
+    }
+    $('#importExportTitle').textContent = 'Экспорт данных';
+    $('#dataText').value = JSON.stringify(data, null, 2);
+    $('#fileActionBtn').textContent = 'Скачать файл';
+    openModal('importExportModal');
+}
+
+function importData() {
+    $('#importExportTitle').textContent = 'Импорт данных';
+    $('#dataText').value = '';
+    $('#fileActionBtn').textContent = 'Загрузить данные';
+    openModal('importExportModal');
+}
+
+function handleFileAction() {
+    const title = $('#importExportTitle').textContent;
+    if (title.includes('Экспорт')) {
+        const blob = new Blob([$('#dataText').value], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `fitness-backup-${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+    } else {
+        try {
+            const data = JSON.parse($('#dataText').value);
+            Object.keys(data).forEach(key => {
+                if (key.startsWith('fitness-app:')) localStorage.setItem(key, data[key]);
+            });
+            alert('Данные успешно импортированы!');
+            location.reload();
+        } catch(e) {
+            alert('Ошибка! Неверный формат данных.');
+        }
+    }
+}
+
+// --- ИНИЦИАЛИЗАЦИЯ И ОБРАБОТЧИКИ СОБЫТИЙ ---
+document.addEventListener('DOMContentLoaded', () => {
+    loadTheme();
+    const savedProgram = localStorage.getItem(storageKey('currentProgram')) || 'friday_legs';
+    selectProgram(savedProgram, false);
+    initSync();
+
+    // Event Listeners
+    $('#themeToggle').addEventListener('change', (e) => toggleTheme(e.target.checked));
+    $('#wakeLockToggle').addEventListener('change', (e) => toggleWakeLock(e.target.checked));
+    $('#connectBtn').addEventListener('click', connectToDevice);
+    $('#fileActionBtn').addEventListener('click', handleFileAction);
+
+    $$('.program-btn').forEach(btn => {
+        btn.addEventListener('click', () => selectProgram(btn.dataset.program));
+    });
+
+    $('.wrap').addEventListener('input', (e) => {
+        if (e.target.matches('.weight, #workoutNotes')) {
+            saveCurrentProgramData();
+        }
+    });
+
+    $('.wrap').addEventListener('change', (e) => {
+        if (e.target.matches('.exercise-done')) {
+            e.target.closest('tr').classList.toggle('completed', e.target.checked);
+            saveCurrentProgramData();
+            updateSessionProgress();
+        }
+    });
+
+    document.body.addEventListener('mouseover', e => { if(e.target.closest('.info')) showTip(e); });
+    document.body.addEventListener('mouseout', e => { if(e.target.closest('.info')) hideTip(); });
+    
+    $$('.modal .close').forEach(el => el.addEventListener('click', () => closeModal(el.closest('.modal').id)));
+    
+    // Auto-sync changes periodically
+    setInterval(() => {
+        if (unsavedChanges) {
+            syncFullState();
+            unsavedChanges = false;
+        }
+    }, 1500);
+});
+</script>
+</body>
+</html>
